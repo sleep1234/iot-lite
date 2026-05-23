@@ -1,0 +1,10 @@
+__pycache__/
+*.pyc
+*.pyo
+.env
+.psession
+.tgt_token
+accounts.db
+captchas/
+*.log
+.DS_Store

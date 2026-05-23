@@ -1,0 +1,513 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>IoT Lite - 物联网卡管理</title>
+<style>
+:root{--bg:#0f1117;--card:#1a1d27;--border:#2a2d3a;--text:#e4e6eb;--text2:#8b8fa3;--accent:#4f8cff;--accent2:#6c5ce7;--green:#00d68f;--red:#ff4757;--orange:#ffa502;--yellow:#ffd43b;--radius:12px}
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:var(--bg);color:var(--text);min-height:100vh}
+.app{max-width:1200px;margin:0 auto;padding:20px}
+
+/* Header */
+.header{display:flex;align-items:center;justify-content:space-between;padding:16px 0;margin-bottom:24px;border-bottom:1px solid var(--border)}
+.header h1{font-size:20px;font-weight:600;display:flex;align-items:center;gap:8px}
+.session-info{display:flex;align-items:center;gap:12px;font-size:13px;color:var(--text2)}
+.dot{width:8px;height:8px;border-radius:50%;background:var(--red)}
+.dot.on{background:var(--green)}
+
+/* Tabs */
+.tabs{display:flex;gap:4px;margin-bottom:24px;background:var(--card);padding:4px;border-radius:var(--radius);width:fit-content}
+.tab{padding:8px 20px;border-radius:8px;font-size:13px;font-weight:500;cursor:pointer;color:var(--text2);transition:all .2s;border:none;background:transparent}
+.tab.on{background:var(--accent);color:#fff}
+.tab:hover:not(.on){color:var(--text)}
+
+/* Panels */
+.panel{display:none}.panel.on{display:block}
+
+/* Search */
+.search-box{background:var(--card);border:2px solid var(--border);border-radius:var(--radius);padding:4px;margin-bottom:24px;transition:border-color .2s}
+.search-box:focus-within{border-color:var(--accent)}
+.search-row{display:flex;align-items:center;gap:8px}
+.search-input{flex:1;background:transparent;border:none;outline:none;color:var(--text);font-size:16px;padding:12px 16px}
+.search-input::placeholder{color:var(--text2)}
+.search-hint{font-size:12px;color:var(--text2);padding:0 16px 8px;display:flex;gap:12px;flex-wrap:wrap}
+.tag{display:inline-block;background:var(--border);padding:2px 8px;border-radius:4px;font-size:11px}
+.btn{padding:10px 20px;border-radius:8px;font-size:13px;font-weight:500;cursor:pointer;border:1px solid var(--border);background:var(--card);color:var(--text);transition:all .2s}
+.btn:hover{border-color:var(--accent)}
+.btn-p{background:var(--accent);border-color:var(--accent);color:#fff}
+.btn-p:hover{opacity:.9}
+.btn-d{background:rgba(255,71,87,.1);border-color:var(--red);color:var(--red)}
+.btn-d:hover{background:rgba(255,71,87,.2)}
+.btn-w{background:rgba(255,165,2,.1);border-color:var(--orange);color:var(--orange)}
+.btn-g{background:rgba(0,214,143,.1);border-color:var(--green);color:var(--green)}
+.btn:disabled{opacity:.5;cursor:not-allowed}
+.btn-sm{padding:6px 14px;font-size:12px}
+
+/* Cards */
+.card{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:20px;margin-bottom:16px}
+.card-title{font-size:13px;font-weight:600;color:var(--text2);text-transform:uppercase;letter-spacing:.5px;margin-bottom:16px;display:flex;align-items:center;gap:8px}
+.badge{font-size:11px;padding:2px 8px;border-radius:4px;font-weight:500}
+.badge-old{background:#2d1f5e;color:#a78bfa}
+.badge-new{background:#1a3a2a;color:#6ee7b7}
+
+/* Info Grid */
+.info-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:12px}
+.info-item{display:flex;flex-direction:column;gap:4px}
+.info-label{font-size:11px;color:var(--text2);text-transform:uppercase;letter-spacing:.3px}
+.info-val{font-size:13px;color:var(--text);font-weight:500;word-break:break-all}
+.mono{font-family:'SF Mono',Consolas,monospace;font-size:12px}
+
+/* Status */
+.status{display:inline-block;padding:3px 10px;border-radius:6px;font-size:12px;font-weight:500}
+.s-on{background:#1a3a2a;color:#6ee7b7}
+.s-off{background:#3a1a1a;color:#fca5a5}
+.s-wait{background:#3a3a1a;color:#fcd34d}
+.s-def{background:var(--border);color:var(--text2)}
+
+/* Products */
+.prod-list{display:flex;flex-direction:column;gap:8px}
+.prod-item{display:flex;align-items:center;justify-content:space-between;padding:12px 16px;background:rgba(255,255,255,.03);border-radius:8px;border:1px solid var(--border)}
+.prod-name{font-weight:500;font-size:14px}
+.prod-sub{font-size:12px;color:var(--text2);margin-top:2px}
+
+/* Services Table */
+.svc-table{width:100%;border-collapse:collapse;font-size:12px}
+.svc-table th{text-align:left;color:var(--text2);padding:6px 8px;border-bottom:1px solid var(--border);font-weight:500}
+.svc-table td{padding:6px 8px;border-bottom:1px solid rgba(255,255,255,.03)}
+.svc-table tr:hover td{background:rgba(255,255,255,.02)}
+
+/* Ext Attrs */
+.attr-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:6px}
+.attr-item{display:flex;justify-content:space-between;padding:6px 10px;background:rgba(255,255,255,.02);border-radius:6px;font-size:12px}
+.attr-name{color:var(--text2)}
+.attr-val{color:var(--text);font-weight:500}
+
+/* Actions */
+.actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}
+
+/* Order Table */
+.order-table{width:100%;border-collapse:collapse}
+.order-table th{text-align:left;font-size:11px;color:var(--text2);text-transform:uppercase;letter-spacing:.5px;padding:8px 12px;border-bottom:1px solid var(--border)}
+.order-table td{padding:10px 12px;font-size:13px;border-bottom:1px solid rgba(255,255,255,.03)}
+.order-table tr:hover td{background:rgba(255,255,255,.02)}
+
+/* Filter row */
+.filter-row{display:flex;gap:8px;align-items:center;margin-bottom:16px;flex-wrap:wrap}
+.filter-row select,.filter-row input{background:var(--card);border:1px solid var(--border);color:var(--text);padding:8px 12px;border-radius:8px;font-size:13px;outline:none}
+.filter-row input:focus{border-color:var(--accent)}
+
+/* Batch */
+textarea{width:100%;background:var(--card);border:1px solid var(--border);border-radius:var(--radius);color:var(--text);font-family:'SF Mono',monospace;font-size:13px;padding:16px;resize:vertical;min-height:120px;outline:none}
+textarea:focus{border-color:var(--accent)}
+
+/* Loading */
+.loading{display:inline-block;width:16px;height:16px;border:2px solid var(--border);border-top-color:var(--accent);border-radius:50%;animation:spin .6s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+/* Toast */
+.toast{position:fixed;bottom:24px;right:24px;padding:12px 20px;border-radius:8px;font-size:13px;font-weight:500;z-index:1000;transform:translateY(100px);opacity:0;transition:all .3s}
+.toast.show{transform:translateY(0);opacity:1}
+.toast-ok{background:var(--green);color:#000}
+.toast-err{background:var(--red);color:#fff}
+
+/* Empty */
+.empty{text-align:center;padding:60px 20px;color:var(--text2)}
+.empty .icon{font-size:48px;margin-bottom:16px}
+
+/* Dialog */
+.overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:100;align-items:center;justify-content:center}
+.overlay.show{display:flex}
+.dialog{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:24px;width:420px;max-width:90vw}
+.dialog h3{margin-bottom:12px}
+.dialog p{color:var(--text2);font-size:14px;margin-bottom:20px;line-height:1.6}
+.dialog-actions{display:flex;gap:8px;justify-content:flex-end}
+
+/* Collapsible */
+.collapse-header{cursor:pointer;display:flex;align-items:center;justify-content:space-between;padding:8px 0}
+.collapse-header:hover{color:var(--accent)}
+.collapse-body{display:none;padding-top:8px}
+.collapse-body.open{display:block}
+.chevron{transition:transform .2s;font-size:12px}
+.chevron.open{transform:rotate(90deg)}
+
+/* Login panel */
+.login-box{max-width:400px;margin:40px auto}
+.login-box input{width:100%;background:var(--card);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:14px;padding:12px 16px;outline:none;margin-bottom:12px}
+.login-box input:focus{border-color:var(--accent)}
+
+@media(max-width:640px){.info-grid{grid-template-columns:1fr 1fr}.search-row{flex-direction:column}.btn{width:100%}}
+</style>
+</head>
+<body>
+<div class="app">
+  <!-- Header -->
+  <div class="header">
+    <h1>📡 IoT Lite</h1>
+    <div class="session-info">
+      <span id="staffName">未连接</span>
+      <div class="dot" id="sessionDot"></div>
+      <button class="btn btn-sm" onclick="showLogin()" id="loginBtn">连接</button>
+    </div>
+  </div>
+
+  <!-- Tabs -->
+  <div class="tabs">
+    <button class="tab on" onclick="switchTab(this,'query')">🔍 查询</button>
+    <button class="tab" onclick="switchTab(this,'batch')">📋 批量</button>
+    <button class="tab" onclick="switchTab(this,'orders')">📦 工单</button>
+    <button class="tab" onclick="switchTab(this,'login')">🔐 连接</button>
+  </div>
+
+  <!-- ===== Query Panel ===== -->
+  <div id="p-query" class="panel on">
+    <div class="search-box">
+      <div class="search-row">
+        <input class="search-input" id="q" placeholder="粘贴 ICCID 或接入号，自动识别查询..." autofocus>
+        <button class="btn btn-p" id="qBtn" onclick="doQuery()">查询</button>
+      </div>
+      <div class="search-hint">
+        <span class="tag">8986... 19位 → ICCID 自动转接入号</span>
+        <span class="tag">141... 13位 → 直接查询</span>
+        <span class="tag">支持粘贴多个批量查</span>
+      </div>
+    </div>
+
+    <div id="qEmpty" class="empty"><div class="icon">🔍</div><p>输入 ICCID 或接入号开始查询</p></div>
+    <div id="qResult" style="display:none"></div>
+  </div>
+
+  <!-- ===== Batch Panel ===== -->
+  <div id="p-batch" class="panel">
+    <div class="card">
+      <div class="card-title">📋 批量查询</div>
+      <textarea id="batchIn" placeholder="每行一个 ICCID 或接入号&#10;8986012345678901234&#10;1410775640689"></textarea>
+      <div class="actions">
+        <button class="btn btn-p" onclick="doBatchQuery()">批量查询</button>
+        <button class="btn btn-d" onclick="doBatchUnbind()">批量解绑</button>
+      </div>
+    </div>
+    <div id="batchResults"></div>
+  </div>
+
+  <!-- ===== Orders Panel ===== -->
+  <div id="p-orders" class="panel">
+    <div class="card">
+      <div class="card-title">📦 工单查询</div>
+      <div class="filter-row">
+        <select id="oDays"><option value="1">今天</option><option value="3" selected>最近3天</option><option value="7">最近7天</option><option value="30">最近30天</option></select>
+        <input id="oStaff" placeholder="员工姓名">
+        <button class="btn btn-p" onclick="doOrderQuery()">查询</button>
+      </div>
+      <div id="orderResults"><div class="empty"><p>点击查询查看工单</p></div></div>
+    </div>
+  </div>
+
+  <!-- ===== Login Panel ===== -->
+  <div id="p-login" class="panel">
+    <div class="card login-box">
+      <div class="card-title">🔐 CRM 连接</div>
+      <div id="loginStatus"></div>
+      <div style="margin-top:16px">
+        <label class="info-label">PSESSIONNEWID</label>
+        <input type="text" id="psessionIn" placeholder="粘贴 PSESSIONNEWID Cookie">
+        <button class="btn btn-p" onclick="doManualLogin()" style="width:100%">手动连接</button>
+      </div>
+      <div style="margin-top:16px">
+        <button class="btn btn-g" onclick="doAutoLogin()" style="width:100%">🤖 全自动登录</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Confirm Dialog -->
+<div class="overlay" id="dlg">
+  <div class="dialog">
+    <h3 id="dlgTitle">确认</h3>
+    <p id="dlgMsg"></p>
+    <div class="dialog-actions">
+      <button class="btn" onclick="closeDlg()">取消</button>
+      <button class="btn btn-p" id="dlgOk" onclick="dlgAction()">确认</button>
+    </div>
+  </div>
+</div>
+
+<!-- Toast -->
+<div class="toast" id="toast"></div>
+
+<script>
+let curAcc='', curData=null, dlgCb=null;
+
+// ===== Tab =====
+function switchTab(el,id){
+  document.querySelectorAll('.tab').forEach(t=>t.classList.remove('on'));
+  document.querySelectorAll('.panel').forEach(p=>p.classList.remove('on'));
+  el.classList.add('on');
+  document.getElementById('p-'+id).classList.add('on');
+}
+
+// ===== Toast =====
+function toast(msg,type='ok'){
+  const el=document.getElementById('toast');
+  el.textContent=msg;el.className='toast toast-'+type+' show';
+  setTimeout(()=>el.classList.remove('show'),3000);
+}
+
+// ===== Dialog =====
+function showDlg(title,msg,cb,okText='确认'){
+  document.getElementById('dlgTitle').textContent=title;
+  document.getElementById('dlgMsg').innerHTML=msg;
+  document.getElementById('dlgOk').textContent=okText;
+  document.getElementById('dlg').classList.add('show');
+  dlgCb=cb;
+}
+function closeDlg(){document.getElementById('dlg').classList.remove('show');dlgCb=null}
+function dlgAction(){if(dlgCb)dlgCb();closeDlg()}
+
+// ===== Status Badge =====
+function statusClass(cd){
+  if(cd==='100000')return 's-on';
+  if(cd==='120000')return 's-off';
+  if(cd==='110000')return 's-wait';
+  return 's-def';
+}
+
+// ===== Smart Query =====
+async function doQuery(){
+  const input=document.getElementById('q').value.trim();
+  if(!input)return;
+  const btn=document.getElementById('qBtn');
+  btn.disabled=true;btn.innerHTML='<span class="loading"></span>';
+  
+  // Check if multiple lines
+  const lines=input.split(/[\n,;]+/).map(s=>s.trim()).filter(Boolean);
+  if(lines.length>1){
+    // Multi-line = batch query
+    switchTab(document.querySelectorAll('.tab')[1],'batch');
+    document.getElementById('batchIn').value=lines.join('\n');
+    doBatchQuery();
+    btn.disabled=false;btn.textContent='查询';
+    return;
+  }
+  
+  try{
+    const r=await fetch('/api/query',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({text:input})});
+    const d=await r.json();
+    if(d.ok){showResult(d);toast('查询成功')}
+    else toast(d.msg,'err');
+  }catch(e){toast('查询失败: '+e.message,'err')}
+  finally{btn.disabled=false;btn.textContent='查询'}
+}
+
+function showResult(d){
+  curAcc=d.accNum;curData=d;
+  document.getElementById('qEmpty').style.display='none';
+  const el=document.getElementById('qResult');
+  el.style.display='block';
+  
+  let html='';
+  
+  // === Customer Card ===
+  html+=`<div class="card">
+    <div class="card-title">👤 客户信息 <span class="badge ${d.source==='old'?'badge-old':'badge-new'}">${d.source==='old'?'老系统':'新系统'}</span></div>
+    <div class="info-grid">
+      <div class="info-item"><span class="info-label">接入号</span><span class="info-val mono">${d.accNum}</span></div>
+      <div class="info-item"><span class="info-label">ICCID</span><span class="info-val mono">${d.iccid||'-'}</span></div>
+      <div class="info-item"><span class="info-label">客户名称</span><span class="info-val">${d.customer?.custName||'-'}</span></div>
+      <div class="info-item"><span class="info-label">客户编号</span><span class="info-val mono">${d.customer?.custNumber||'-'}</span></div>
+      <div class="info-item"><span class="info-label">客户地址</span><span class="info-val">${d.customer?.custAddr||'-'}</span></div>
+    </div></div>`;
+  
+  // === Card Info ===
+  const ci=d.cardInfo||{};
+  html+=`<div class="card">
+    <div class="card-title">📱 卡片信息</div>
+    <div class="info-grid">
+      <div class="info-item"><span class="info-label">状态</span><span class="status ${statusClass(ci.statusCd)}">${ci.status||'-'}</span></div>
+      <div class="info-item"><span class="info-label">套餐</span><span class="info-val">${ci.offerName||ci.prodName||'-'}</span></div>
+      <div class="info-item"><span class="info-label">产品ID</span><span class="info-val mono">${ci.prodId||'-'}</span></div>
+      <div class="info-item"><span class="info-label">UIM号</span><span class="info-val mono">${ci.uimNum||'-'}</span></div>
+      <div class="info-item"><span class="info-label">IMEI</span><span class="info-val mono">${ci.imei||'-'}</span></div>
+      <div class="info-item"><span class="info-label">IP地址</span><span class="info-val mono">${ci.ipAddress||'-'}</span></div>
+      <div class="info-item"><span class="info-label">DNN</span><span class="info-val">${ci.dnnName||'-'}</span></div>
+      <div class="info-item"><span class="info-label">绑定状态</span><span class="info-val">${ci.bindStatus||'-'}</span></div>
+    </div></div>`;
+  
+  // === Products ===
+  if(d.products&&d.products.length){
+    html+=`<div class="card"><div class="card-title">📦 产品实例</div><div class="prod-list">`;
+    d.products.forEach(p=>{
+      html+=`<div class="prod-item"><div><div class="prod-name">${p.offerName||p.prodName}</div><div class="prod-sub">${p.prodName} · ${p.accNum}</div></div><span class="status ${statusClass(p.statusCd)}">${p.statusCdDesc||p.statusCd}</span></div>`;
+    });
+    html+=`</div></div>`;
+  }
+  
+  // === Ordered Services (collapsible) ===
+  if(d.orderedServices&&d.orderedServices.length){
+    html+=`<div class="card">
+      <div class="collapse-header" onclick="toggleCollapse(this)"><div class="card-title" style="margin:0">🔧 已订购服务 (${d.orderedServices.length})</div><span class="chevron">▶</span></div>
+      <div class="collapse-body">`;
+    d.orderedServices.forEach(s=>{
+      html+=`<div style="margin-bottom:12px"><div style="font-weight:500;font-size:13px;margin-bottom:4px">${s.prodName} <span class="mono" style="color:var(--text2);font-size:11px">(${s.prodId})</span></div>`;
+      if(s.attrs&&s.attrs.length){
+        html+=`<div class="attr-grid">`;
+        s.attrs.forEach(a=>{
+          html+=`<div class="attr-item"><span class="attr-name">${a.attrName}</span><span class="attr-val">${a.displayValue||a.value||'-'}</span></div>`;
+        });
+        html+=`</div>`;
+      }
+      html+=`</div>`;
+    });
+    html+=`</div></div>`;
+  }
+  
+  // === Extended Attributes (collapsible) ===
+  if(d.extAttrs&&Object.keys(d.extAttrs).length){
+    html+=`<div class="card">
+      <div class="collapse-header" onclick="toggleCollapse(this)"><div class="card-title" style="margin:0">📊 扩展属性 (${Object.keys(d.extAttrs).length})</div><span class="chevron">▶</span></div>
+      <div class="collapse-body"><div class="attr-grid">`;
+    for(const[k,v]of Object.entries(d.extAttrs)){
+      html+=`<div class="attr-item"><span class="attr-name">${v.name}</span><span class="attr-val">${v.displayValue||v.value||'-'}</span></div>`;
+    }
+    html+=`</div></div></div>`;
+  }
+  
+  // === Direction Code ===
+  if(d.dirCodeInfo){
+    html+=`<div class="card">
+      <div class="card-title">🎯 定向编码</div>
+      <div class="info-grid">
+        <div class="info-item"><span class="info-label">定向类型</span><span class="info-val">${d.dirCodeInfo.dirType||'-'}</span></div>
+        <div class="info-item"><span class="info-label">定向编码</span><span class="info-val mono">${d.dirCodeInfo.dirCode||'-'}</span></div>
+        <div class="info-item"><span class="info-label">APN</span><span class="info-val">${d.dirCodeInfo.apnName||'-'}</span></div>
+      </div></div>`;
+  }
+  
+  // === Quick Actions ===
+  html+=`<div class="card">
+    <div class="card-title">⚡ 快捷操作</div>
+    <div class="actions">
+      <button class="btn btn-d" onclick="doUnbind('${d.accNum}')">🔓 机卡解绑</button>
+      <button class="btn btn-w" onclick="doReinstate('${d.accNum}')">🔄 违章复机</button>
+      <button class="btn" onclick="copyText('${d.accNum}')">📋 复制接入号</button>
+      <button class="btn" onclick="copyText('${d.iccid||''}')">📋 复制ICCID</button>
+      <button class="btn" onclick="copyText(JSON.stringify(curData,null,2))">📋 复制全部</button>
+    </div></div>`;
+  
+  el.innerHTML=html;
+}
+
+function toggleCollapse(el){
+  const body=el.nextElementSibling;
+  const chevron=el.querySelector('.chevron');
+  body.classList.toggle('open');
+  chevron.classList.toggle('open');
+}
+
+// ===== Actions =====
+function copyText(t){if(t){navigator.clipboard.writeText(t);toast('已复制: '+t.substring(0,30)+'...')}}
+
+function doUnbind(acc){
+  showDlg('确认解绑',`确定要对接入号 <b>${acc}</b> 执行机卡解绑吗？<br><br>此操作不可撤销。`,async()=>{
+    try{const r=await fetch('/api/unbind',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({accNum:acc,reason:'机卡解绑'})});
+    const d=await r.json();if(d.ok)toast('解绑成功！订单号: '+d.orderId);else toast(d.msg,'err')}catch(e){toast('操作失败','err')}
+  },'确认解绑');
+}
+
+function doReinstate(acc){
+  showDlg('确认复机',`确定要对接入号 <b>${acc}</b> 执行违章复机吗？`,async()=>{
+    try{const r=await fetch('/api/reinstate',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({accNum:acc,reason:'违章复机'})});
+    const d=await r.json();if(d.ok)toast('复机成功！订单号: '+d.orderId);else toast(d.msg,'err')}catch(e){toast('操作失败','err')}
+  },'确认复机');
+}
+
+// ===== Batch =====
+async function doBatchQuery(){
+  const text=document.getElementById('batchIn').value.trim();
+  if(!text)return;
+  const items=text.split('\n').map(s=>s.trim()).filter(Boolean);
+  const el=document.getElementById('batchResults');
+  el.innerHTML='<div class="card"><span class="loading"></span> 查询中...</div>';
+  try{const r=await fetch('/api/batch_query',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({items})});
+  const d=await r.json();if(d.ok){el.innerHTML='';d.data.forEach((r,i)=>{
+    const c=document.createElement('div');c.className='card';
+    if(r.ok){c.innerHTML=`<div style="display:flex;justify-content:space-between;align-items:center"><div><b>${r.accNum}</b> <span class="badge ${r.source==='old'?'badge-old':'badge-new'}">${r.source}</span></div><div class="actions" style="margin:0"><button class="btn btn-sm btn-d" onclick="doUnbind('${r.accNum}')">解绑</button></div></div><div class="info-grid" style="margin-top:12px"><div class="info-item"><span class="info-label">ICCID</span><span class="info-val mono">${r.iccid||'-'}</span></div><div class="info-item"><span class="info-label">客户</span><span class="info-val">${r.customer?.custName||'-'}</span></div><div class="info-item"><span class="info-label">产品</span><span class="info-val">${r.cardInfo?.offerName||r.products?.[0]?.offerName||'-'}</span></div><div class="info-item"><span class="info-label">状态</span><span class="status ${statusClass(r.cardInfo?.statusCd||r.products?.[0]?.statusCd)}">${r.cardInfo?.status||r.products?.[0]?.statusCdDesc||'-'}</span></div></div>`}
+    else{c.innerHTML=`<div style="color:var(--red)">❌ ${items[i]}: ${r.msg}</div>`}
+    el.appendChild(c)})}}catch(e){el.innerHTML='<div class="card" style="color:var(--red)">查询失败</div>'}
+}
+
+async function doBatchUnbind(){
+  const text=document.getElementById('batchIn').value.trim();
+  if(!text)return;
+  showDlg('批量解绑',`确定要批量解绑以下内容吗？<br><pre style="white-space:pre-wrap;font-size:12px;color:var(--text2);margin-top:8px">${text}</pre>`,async()=>{
+    const items=text.split('\n').map(s=>s.trim()).filter(Boolean);
+    const el=document.getElementById('batchResults');
+    el.innerHTML='<div class="card"><span class="loading"></span> 解绑中...</div>';
+    try{const r=await fetch('/api/batch_unbind',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({items,reason:'批量解绑'})});
+    const d=await r.json();if(d.ok){el.innerHTML='';d.data.forEach(r=>{
+      const c=document.createElement('div');c.className='card';
+      c.innerHTML=`<div style="color:${r.ok?'var(--green)':'var(--red)'}">${r.ok?'✅':'❌'} ${r.input||r.accNum}: ${r.ok?'解绑成功':' '+r.msg}</div>`;
+      el.appendChild(c)})}}catch(e){el.innerHTML='<div class="card" style="color:var(--red)">操作失败</div>'}
+  },'确认批量解绑');
+}
+
+// ===== Orders =====
+async function doOrderQuery(){
+  const days=document.getElementById('oDays').value;
+  const staff=document.getElementById('oStaff').value.trim();
+  const el=document.getElementById('orderResults');
+  el.innerHTML='<div class="card"><span class="loading"></span> 查询中...</div>';
+  try{const r=await fetch('/api/orders',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({days:parseInt(days),staffName:staff})});
+  const d=await r.json();
+  if(d.ok){
+    let h=`<div style="font-size:12px;color:var(--text2);margin-bottom:8px">共 ${d.total} 条</div>`;
+    h+='<table class="order-table"><thead><tr><th>工单号</th><th>业务</th><th>客户</th><th>状态</th><th>时间</th><th>经办人</th></tr></thead><tbody>';
+    d.data.forEach(o=>{
+      h+=`<tr><td class="mono">${o.orderNbr}</td><td>${o.businessName}</td><td>${o.custName}</td><td><span class="status ${statusClass(o.statusCd)}">${o.statusDesc}</span></td><td>${o.acceptDate}</td><td>${o.staffName}</td></tr>`;
+    });
+    h+='</tbody></table>';el.innerHTML=h;
+  }else el.innerHTML='<div class="card" style="color:var(--red)">'+d.msg+'</div>';
+  }catch(e){el.innerHTML='<div class="card" style="color:var(--red)">查询失败</div>'}
+}
+
+// ===== Session =====
+function showLogin(){switchTab(document.querySelectorAll('.tab')[3],'login');checkSession()}
+
+async function checkSession(){
+  try{const r=await fetch('/api/session/status');const d=await r.json();
+  const el=document.getElementById('loginStatus');
+  if(d.loggedIn){
+    document.getElementById('staffName').textContent=d.staff.staffName;
+    document.getElementById('sessionDot').classList.add('on');
+    document.getElementById('loginBtn').textContent='已连接';
+    el.innerHTML=`<div style="color:var(--green)">✅ 已连接: ${d.staff.staffName} (${d.staff.sysPostName})</div>`;
+  }else{
+    document.getElementById('staffName').textContent='未连接';
+    document.getElementById('sessionDot').classList.remove('on');
+    document.getElementById('loginBtn').textContent='连接';
+    el.innerHTML='<div style="color:var(--red)">❌ 未连接到 CRM 系统</div>';
+  }}catch(e){}
+}
+
+async function doManualLogin(){
+  const ps=document.getElementById('psessionIn').value.trim();
+  if(!ps)return toast('请输入PSESSIONNEWID','err');
+  try{const r=await fetch('/api/session/login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({psession:ps})});
+  const d=await r.json();if(d.ok){toast('连接成功');checkSession()}else toast(d.msg,'err')}catch(e){toast('连接失败','err')}
+}
+
+async function doAutoLogin(){
+  toast('正在尝试自动登录...');
+  try{const r=await fetch('/api/session/auto_login',{method:'POST'});const d=await r.json();
+  if(d.ok){toast('自动登录成功');checkSession()}else toast(d.msg,'err')}catch(e){toast('自动登录失败','err')}
+}
+
+// Enter key
+document.getElementById('q').addEventListener('keydown',e=>{if(e.key==='Enter')doQuery()});
+
+// Init
+checkSession();
+</script>
+</body>
+</html>
